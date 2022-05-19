@@ -1,0 +1,149 @@
+SELECT * FROM CUSTOMER_RETAIL;
+
+SELECT * FROM SALES_RETAIL;
+
+--1.	Find all the customers who did not make any sales from last two months. 
+SELECT CUST_NAME
+    FROM CUSTOMER_RETAIL
+    WHERE CUST_ID IN (SELECT CUST_ID
+                        FROM SALES_RETAIL
+                        WHERE TRUNC(SYSDATE,'MM')=TRUNC(SALES_DATE,'MM')
+                        AND ADD_MONTHS(TRUNC(SYSDATE,'MM'),-1)=TRUNC(SALES_DATE,'MM'));
+                        
+SELECT ADD_MONTHS(TRUNC(SYSDATE,'MM'),-1)FROM DUAL;
+
+SELECT SALES_DATE FROM SALES_RETAIL WHERE TRUNC(SYSDATE,'MM')=TRUNC(SALES_DATE,'MM');
+
+--2.	Find top 10 customers in terms of sales in the current year
+SELECT CUST_NAME
+FROM (SELECT CUST_NAME,AMOUNT, DENSE_RANK() OVER
+            (ORDER BY AMOUNT DESC)R
+            FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+            WHERE C.CUST_ID = S.CUST_ID
+            AND TO_CHAR(SYSDATE,'YY')-1=TO_CHAR(SALES_DATE,'YY'))
+WHERE R<10;
+
+--3.	How many different cities from which we have our customers
+SELECT COUNT(DISTINCT CUST_CITY)NO_OF_DIF_CITY
+FROM CUSTOMER_RETAIL;
+
+--4.	Find customers who are from the same city as Customer ‘TIM’
+SELECT CUST_NAME
+FROM CUSTOMER_RETAIL
+WHERE CUST_NAME NOT IN 'tim' AND CUST_CITY = (SELECT CUST_CITY
+                    FROM CUSTOMER_RETAIL
+                    WHERE CUST_NAME = 'tim');
+                    
+--5.	Find how many different customers we got yesterday
+SELECT DISTINCT CUST_ID
+FROM SALES_RETAIL
+WHERE TO_CHAR(SYSDATE,'DD')-2=TO_CHAR(SALES_DATE,'DD');
+
+SELECT TO_CHAR(SYSDATE,'YY')-1 FROM DUAL;
+
+/*6.	Find the date in the current month which gave the least total sales amount.
+For example on 1-Jan-13 we sold for 3000 Rs, and on 2-Jan-13 we sold total of 8000 
+(In this case the answer should be 1-Jan-13)*/
+SELECT SALES_DATE
+FROM SALES_RETAIL
+WHERE (TO_CHAR(SALES_DATE,'DD-MM-YY'),AMOUNT) IN (SELECT TO_CHAR(SALES_DATE,'DD-MM-YY'),MIN(AMOUNT)
+                    FROM SALES_RETAIL
+                    WHERE TO_CHAR(SYSDATE,'MM-YY')=TO_CHAR(SALES_DATE,'MM-YY')
+                    GROUP BY TO_CHAR(SALES_DATE,'DD-MM-YY'));
+
+--7.	Create a view which gives Customer_Name, Month and total revenue we got
+CREATE VIEW VW_CUST_SALE11
+AS 
+SELECT CUST_NAME,TO_CHAR(SALES_DATE,'MON')MONTH,SUM(AMOUNT)TOT_REV_CY
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID=S.CUST_ID
+GROUP BY CUST_NAME,TO_CHAR(SALES_DATE,'MON');
+
+SELECT * FROM VW_CUST_SALE11;
+
+--8.	Create a view which gives customer_name, city, year, revenue we got
+CREATE VIEW VW_CUST_SALE22
+AS 
+SELECT CUST_NAME,CUST_CITY,TO_CHAR(SALES_DATE,'YY')YEAR,SUM(AMOUNT)TOT_REV_CY
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID=S.CUST_ID
+GROUP BY CUST_NAME,CUST_CITY,TO_CHAR(SALES_DATE,'YY');
+
+SELECT * FROM VW_CUST_SALE22;
+
+--9.	Create an index (non cluster index) on cust_nm column in Customer table
+CREATE INDEX NM_INDEX
+ON CUSTOMER_RETAIL(CUST_NAME);
+
+--10.	Find the customer who has most number of transactions.
+SELECT CUST_NAME,NO_OF_SALES
+FROM (SELECT CUST_NAME,COUNT(SALES_ID)NO_OF_SALES,DENSE_RANK() OVER
+            (ORDER BY COUNT(SALES_ID) DESC)R
+            FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+            WHERE C.CUST_ID = S.CUST_ID
+            GROUP BY CUST_NAME)
+WHERE R=1;
+
+--11.	Display the citywise current year YTD and previous year YTD.
+--City_name	Current_YTD	   Prev_YTD
+
+SELECT CUST_CITY, COUNT(CASE WHEN TO_CHAR(SYSDATE,'YY')=TO_CHAR(SALES_DATE,'YY') THEN (SALES_ID)
+                    END ) CURRENT_YEAR,
+                  COUNT(CASE WHEN TO_CHAR(SYSDATE,'YY')-1=TO_CHAR(SALES_DATE,'YY') THEN (SALES_ID)
+                    END ) PRE_YEAR
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID = S.CUST_ID
+GROUP BY CUST_CITY;
+
+--12.	Display cities that have more number of customers than the city ‘HYD’.
+SELECT CUST_CITY
+FROM CUSTOMER_RETAIL
+GROUP BY CUST_CITY
+HAVING COUNT(CUST_ID) > (SELECT COUNT(CUST_ID)
+                            FROM CUSTOMER_RETAIL
+                            WHERE CUST_CITY='hyd');
+
+--13.	Display citywise number of customers and number of transactions in the current year.
+SELECT CUST_CITY,COUNT(C.CUST_ID),COUNT(SALES_ID)
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID = S.CUST_ID AND TO_CHAR(SYSDATE,'YY')-1=TO_CHAR(SALES_DATE,'YY')
+GROUP BY CUST_CITY;
+
+--14.	Display the customers who made sales yesterday and today.
+SELECT CUST_NAME
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID = S.CUST_ID 
+AND TO_CHAR(SALES_DATE,'YY')=TO_CHAR(SYSDATE,'YY')-2
+--AND SALES_DATE=SYSDATE
+UNION
+SELECT CUST_NAME
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID = S.CUST_ID AND
+TO_CHAR(SALES_DATE,'YY')=TO_CHAR(SYSDATE,'YY')-1;
+--AND SALES_DATE=SYSDATE-1;
+
+--15.	Display the cities whose number of customers ids more than the number
+--of customers in city ‘Chennai’.
+SELECT CUST_CITY
+FROM CUSTOMER_RETAIL
+GROUP BY CUST_CITY
+HAVING COUNT(CUST_ID) >(SELECT COUNT(CUST_ID)
+                            FROM CUSTOMER_RETAIL
+                            WHERE CUST_CITY='chennai');
+                            
+--16.	Write a query to get the output
+--Display the customers and their status as ‘Made sales’ or ‘No sales’ in the current year.
+SELECT CUST_NAME,CASE WHEN S.CUST_ID IS NOT NULL THEN 'MADE SALES' ELSE 'NO SALES'
+                    END STATUS
+FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+WHERE C.CUST_ID = S.CUST_ID (+); AND TO_CHAR(SALES_DATE,'YY')=TO_CHAR(SYSDATE,'YY')-1;             
+
+--17. Display the top 1 customer based on sales in every year.
+SELECT CUST_NAME,NO_OF_SALES,YEARSS
+FROM (SELECT CUST_NAME,COUNT(SALES_ID)NO_OF_SALES,TO_CHAR(SALES_DATE,'YYYY')YEARSS,DENSE_RANK() OVER
+            (PARTITION BY TO_CHAR(SALES_DATE,'YYYY')
+            ORDER BY COUNT(SALES_ID) DESC)R
+            FROM CUSTOMER_RETAIL C,SALES_RETAIL S
+            WHERE C.CUST_ID = S.CUST_ID
+            GROUP BY CUST_NAME,TO_CHAR(SALES_DATE,'YYYY'))
+WHERE R=1;
