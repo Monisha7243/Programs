@@ -1,0 +1,88 @@
+create table cont_tab(
+contract_id number(20),
+contract_type varchar2(40),
+cont_s_date date,
+cont_e_date date,
+cpt_id number(20),
+cont_amt number(20),
+ins_date date,
+upd_date date);
+
+insert into cont_tab values(12345,'government','10-jan-10','10-jan-11',101,700000,'10-jan-10',null);
+insert into cont_tab values(12879,'government','03-feb-11','15-feb-12',102,489938,'03-feb-11',null);
+insert into cont_tab values(12987,'government','15-feb-11','20-feb-13',103,200000,'15-feb-11',null);
+insert into cont_tab values(12346,'government','01-sep-12','10-feb-13',100,400000,'01-Sep-12','10-apr-13');
+
+create table expd_rcv_tab1(exp_rec_id number(4),exp_rec_date date,contract_id number(20));
+
+create table con_pay_terms(cpt_id number(20),freq_of_pmt varchar2(30));
+
+insert into con_pay_terms values(100,'monthly');
+insert into con_pay_terms values(101,'quarterly');
+insert into con_pay_terms values(102,'half yearly');
+insert into con_pay_terms values(103,'yearly');
+
+select * from cont_tab;
+select * from con_pay_terms;
+SELECT * FROM expd_rcv_tab;
+commit;
+
+CREATE SEQUENCE SEQ_CON1
+START WITH 11
+INCREMENT BY 1
+MINVALUE 10
+MAXVALUE 100
+CYCLE 
+CACHE 5;
+
+
+CREATE OR REPLACE PROCEDURE SP_CONTRACT AS
+CURSOR CONT IS SELECT * FROM CONT_TAB;
+CNT NUMBER :=0;
+VCNT NUMBER(10) :=0;
+S DATE;
+BEGIN
+FOR I IN CONT LOOP
+SELECT COUNT(*) INTO CNT FROM EXPD_RCV_TAB WHERE EXP_REC_DATE = I.CONT_S_DATE AND CONTRACT_ID=I.CONTRACT_ID;
+IF CNT =0 THEN
+VCNT := MONTHS_BETWEEN(I.CONT_E_DATE,I.CONT_S_DATE);
+S := ADD_MONTHS(I.CONT_S_DATE,VCNT);
+    IF I.CPT_ID=100 THEN 
+         WHILE I.CONT_S_DATE<S LOOP
+            INSERT INTO expd_rcv_tab VALUES(SEQ_CON1.NEXTVAL,I.CONT_S_DATE,I.CONTRACT_ID,I.CONT_AMT/VCNT);                    
+            I.CONT_S_DATE := ADD_MONTHS(TO_CHAR(I.CONT_S_DATE),1);
+        END LOOP;  
+    
+    ELSIF I.CPT_ID=101 THEN 
+       -- VCNT := MONTHS_BETWEEN(I.CONT_E_DATE,I.CONT_S_DATE);
+        WHILE I.CONT_S_DATE<S LOOP
+            INSERT INTO expd_rcv_tab VALUES(SEQ_CON1.NEXTVAL,I.CONT_S_DATE,I.CONTRACT_ID,(I.CONT_AMT)/VCNT);                    
+            I.CONT_S_DATE := ADD_MONTHS(TO_CHAR(I.CONT_S_DATE),3);
+        END LOOP;     
+    ELSIF I.CPT_ID=102 THEN 
+       -- VCNT := MONTHS_BETWEEN(I.CONT_E_DATE,I.CONT_S_DATE);
+        WHILE I.CONT_S_DATE<S LOOP
+            INSERT INTO expd_rcv_tab VALUES(SEQ_CON1.NEXTVAL,I.CONT_S_DATE,I.CONTRACT_ID,(I.CONT_AMT)/VCNT);                    
+            I.CONT_S_DATE := ADD_MONTHS(TO_CHAR(I.CONT_S_DATE),6);
+        END LOOP;   
+    ELSIF I.CPT_ID=103 THEN 
+       -- VCNT := MONTHS_BETWEEN(I.CONT_E_DATE,I.CONT_S_DATE);
+        WHILE I.CONT_S_DATE<S LOOP
+            INSERT INTO expd_rcv_tab VALUES(SEQ_CON1.NEXTVAL,I.CONT_S_DATE,I.CONTRACT_ID,(I.CONT_AMT)/VCNT);                    
+            I.CONT_S_DATE := ADD_MONTHS(TO_CHAR(I.CONT_S_DATE),12);
+        END LOOP;   
+    END IF;
+END IF;
+END LOOP;
+EXCEPTION
+WHEN OTHERS THEN
+DBMS_OUTPUT.PUT_LINE(SQLCODE||','||SQLERRM);
+END;
+
+EXEC SP_CONTRACT;
+                  
+SET SERVEROUTPUT ON
+
+SELECT * FROM EXPD_RCV_TAB;
+
+TRUNCATE TABLE EXPD_RCV_TAB;
