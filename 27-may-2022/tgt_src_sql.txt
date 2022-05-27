@@ -1,0 +1,111 @@
+create table tblCustomer1(cid int primary key,
+cname varchar(20),addr varchar(50),phone numeric,dob date,
+email varchar(50),gender char(2),mart_stat varchar(10),
+ct_name varchar(40),st_name varchar(60));
+
+insert into tblCustomer1 values(101,'Megh','BTM',8544144889,'05-feb-1994','mr@gmail.com','M','unmarried','BLR','KA');
+ insert into tblCustomer1 values(102,'Raj','Marathalli',7903635071,'15-nov-1994','rr@gmail.com','M','unmarried','BLR','KA'); 
+insert into tblCustomer1 values (103,'Rakesh','e_city',8102742599,'05-jan-1995','rk@gmail.com','M','married','BLR','KA');
+ insert into tblCustomer1 values(104,'Megha','Rameshwaram',8544144886,'05-apr-1996','me@gmail.com','F','unmarried','CHN','TN');
+  insert into tblCustomer1 values(105,'Rani','Bodhgaya',8544144889,'25-may-2001','ra@gmail.com','F','married','CHR','AN');
+  
+create table tblState1(st_id int primary key,st_name varchar(40));
+
+                 
+create table tblcity1(ct_id int primary key ,
+                     ct_name varchar(40),
+                     st_id int references tblstate(st_id));  
+                     
+create table tblgender1(gen_id int primary key,
+                       gen char(2)); 
+
+create table mart_stat1(mart_id int primary key,m_stat varchar(30)); 
+
+create table tblcust1(cid int,
+                     cname varchar(20),
+                     addr varchar(50),
+                     phone numeric,
+                     dob date,
+                     email varchar(50),
+                     gen_id int references tblgender(gen_id),
+                     mart_id int references mart_stat(mart_id),
+                     ct_id int references tblcity(ct_id) );                 
+
+CREATE SEQUENCE ST_SQE1
+START WITH 101
+INCREMENT BY 1
+MINVALUE 1
+MAXVALUE 200
+CYCLE
+CACHE 5;
+
+CREATE SEQUENCE CITY_SQE1
+START WITH 1001
+INCREMENT BY 1
+MINVALUE 1
+MAXVALUE 2000
+CYCLE
+CACHE 5;
+
+CREATE SEQUENCE GEN_SQE1
+START WITH 50 
+INCREMENT BY 1
+MINVALUE 49
+MAXVALUE 60;
+
+CREATE SEQUENCE MRG_SQE1
+START WITH 500 
+INCREMENT BY 1
+MINVALUE 499
+MAXVALUE 505;
+
+CREATE SEQUENCE CUST_SQE1
+START WITH 500 
+INCREMENT BY 1
+MINVALUE 499
+MAXVALUE 505;
+
+select * from tblCustomer1;
+select * from tblcust1;
+select * from mart_stat1;
+select * from tblgender1;
+select * from tblcity1;
+select * from tblState1;
+
+
+--SQL QUERIES
+
+INSERT INTO TBLSTATE1 (SELECT ST_SQE.NEXTVAL,ST_NAME 
+                                FROM(SELECT DISTINCT ST_NAME
+                                            FROM TBLCUSTOMER1));
+                                            
+SELECT * FROM TBLSTATE1;
+
+INSERT INTO TBLCITY1 (SELECT CITY_SQE.NEXTVAL,CT_NAME,ST_ID
+                        FROM(SELECT DISTINCT CT_NAME,ST_ID
+                            FROM TBLSTATE1 S,TBLCUSTOMER1 C
+                            WHERE S.ST_NAME=C.ST_NAME
+                            AND ST_ID NOT IN (SELECT ST_ID
+                                                FROM TBLCITY1)));
+                                                
+SELECT * FROM TBLCITY1;                                                
+
+INSERT INTO TBLGENDER1 (SELECT GEN_SQE.NEXTVAL,GENDER
+                FROM (SELECT DISTINCT GENDER FROM TBLCUSTOMER1));
+                
+SELECT * FROM TBLGENDER1;                
+
+INSERT INTO MART_STAT1 (SELECT MRG_SQE.NEXTVAL,MART_STAT 
+                            FROM(SELECT DISTINCT MART_STAT
+                                            FROM TBLCUSTOMER));                                            
+                                            
+SELECT * FROM MART_STAT1;                                            
+
+INSERT INTO TBLCUST1 (SELECT CUST_SQE.NEXTVAL,CNAME,ADDR,PHONE,DOB,EMAIL,GEN_ID,MART_ID,CT_ID FROM
+                       TBLCUSTOMER1 T,TBLGENDER1 G,MART_STAT1 M,TBLCITY1 C  WHERE
+                            T.MART_STAT=M.M_STAT AND T.GENDER=G.GEN AND T.CT_NAME=C.CT_NAME);
+                                                   
+                    
+SELECT * FROM TBLCUST1; 
+
+COMMIT;
