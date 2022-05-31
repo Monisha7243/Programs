@@ -1,0 +1,86 @@
+Create table store_product
+(s_prod_id number,
+S_p_code varchar2(20),
+S_p_name varchar(20),
+Sku_id number,
+Cost number,
+Price number
+);
+
+insert into store_product values(1101,'A1234','laptop',9456,30000,32000);
+insert into store_product values(1102,'A1235','headphone',9457,5000,4000);
+insert into store_product values(1103,'A1236','monitor',9458,1000,2000);
+insert into store_product values(1104,'A1237','earphone',9459,500,600);
+insert into store_product values(1105,'A1238','cpu',9460,6000,7000);
+
+Create table online_product
+(o_prod_id number,
+prod_name varchar(20),
+Sku_id number,
+Online_Price number,
+discount number,
+Online_cost number,
+Launch_dt date
+);
+
+insert into online_product values(1501,'Dell laptop',9456,35000,1000,40000,'21-jun-19');
+insert into online_product values(1502,'headphone',9457,4000,500,3000,'11-mar-19');
+insert into online_product values(1503,'Chair',9461,2000,200,1500,'13-jan-19');
+insert into online_product values(1504,'Table',9462,8000,1200,7000,'26-feb-19');
+insert into online_product values(1505,'Sofa',9463,70000,5000,75000,'09-sep-19');
+
+Create table product_master
+(p_id number,
+Sku_id number,
+P_name varchar(20),
+P_cost number, 
+Store_price number,
+Online_price number,
+P_code varchar2(20),
+Launch_date date
+);
+
+CREATE SEQUENCE ID_SQ
+START WITH 100
+INCREMENT BY 1
+MINVALUE 99
+MAXVALUE 200
+CYCLE
+CACHE 5;
+
+commit;
+select * from store_product;
+select * from online_product;
+select * from product_master;
+
+TRUNCATE TABLE PRODUCT_MASTER;
+
+CREATE OR REPLACE PROCEDURE SP_PRODUCT AS
+CURSOR STORE_CUR IS SELECT * FROM STORE_PRODUCT;
+CURSOR ONLINE_CUR IS SELECT * FROM online_product;
+CNT NUMBER;
+VCNT NUMBER;
+CST NUMBER;
+BEGIN
+FOR I IN STORE_CUR LOOP
+    SELECT COUNT(*) INTO CNT FROM PRODUCT_MASTER WHERE SKU_ID=I.SKU_ID;
+    IF CNT =0 THEN
+        INSERT INTO PRODUCT_MASTER (P_ID,SKU_ID,P_NAME,P_COST,STORE_PRICE,P_CODE)
+        VALUES(ID_SQ.NEXTVAL,I.SKU_ID,I.S_P_NAME,I.COST,I.PRICE,I.S_P_CODE);
+    END IF;
+END LOOP;
+FOR J IN ONLINE_CUR LOOP
+   SELECT COUNT(*) INTO VCNT FROM PRODUCT_MASTER WHERE SKU_ID=J.SKU_ID; 
+    IF VCNT = 0 THEN
+        INSERT INTO PRODUCT_MASTER(P_ID,SKU_ID,P_NAME,ONLINE_PRICE,LAUNCH_DATE)
+        VALUES(ID_SQ.NEXTVAL,J.SKU_ID,J.PROD_NAME,J.ONLINE_PRICE,J.LAUNCH_DT);
+    ELSE
+        UPDATE PRODUCT_MASTER SET ONLINE_PRICE=J.ONLINE_PRICE,LAUNCH_DATE=J.LAUNCH_DT WHERE SKU_ID=J.SKU_ID;
+        UPDATE PRODUCT_MASTER SET P_COST=J.ONLINE_COST WHERE P_COST<J.ONLINE_COST AND SKU_ID=J.SKU_ID;
+   END IF;
+END LOOP;
+END;
+
+EXEC SP_PRODUCT;
+
+SET SERVEROUTPUT ON
